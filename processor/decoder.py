@@ -15,8 +15,8 @@ class Decoder(wiring.Component):
     rs2:            wiring.Out(5)
     rd:             wiring.Out(5)
 
-    funct7:         wiring.Out(7)
     funct3:         wiring.Out(3)
+    funct7:         wiring.Out(7)
 
     immediate:      wiring.Out(32)
 
