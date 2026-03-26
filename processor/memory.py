@@ -11,8 +11,8 @@ from amaranth.lib.memory import Memory
 class WishboneMemory(wiring.Component):
     bus:    wiring.In(WishboneSignature(address_width=32, data_width=32, granularity=8))
     
-    def __init__(self, size):
-        self.memory = Memory(shape=32, depth=size, init=[0])
+    def __init__(self, size, init=[]):
+        self.memory = Memory(shape=32, depth=size, init=init)
         self.write  = self.memory.write_port(granularity=8)
         self.read   = self.memory.read_port()
         super().__init__()
@@ -28,12 +28,12 @@ class WishboneMemory(wiring.Component):
             is_selected.eq(self.bus.cyc & self.bus.stb),
 
             self.read.en.eq(is_selected & (~self.bus.we)),
-            self.read.addr.eq(self.bus.adr),
+            self.read.addr.eq(self.bus.addr[2:32]),
             self.bus.data_r.eq(self.read.data),
 
             self.write.en.eq(Mux(is_selected & self.bus.we, self.bus.sel, 0)),
-            self.write.addr.eq(self.bus.adr),
-            self.write.data.eq(self.bus.dat_w),
+            self.write.addr.eq(self.bus.addr[2:32]),
+            self.write.data.eq(self.bus.data_w),
         ]
 
         m.d.sync += ack.eq(is_selected & (~ack))

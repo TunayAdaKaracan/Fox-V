@@ -28,12 +28,12 @@ class OpCodes(IntEnum):
 
     # Branch Operations (0b1100011) | B-Type
     BRANCH  = 0b1100011 # Grouping
-    BEQ     = 0b1100011
-    BNE     = 0b1100011
-    BLT     = 0b1100011
-    BGE     = 0b1100011
-    BLTU    = 0b1100011
-    BGEU    = 0b1100011
+    BEQ     = 0b1100011 # funct3: 000
+    BNE     = 0b1100011 # funct3: 001
+    BLT     = 0b1100011 # funct3: 100
+    BGE     = 0b1100011 # funct3: 101
+    BLTU    = 0b1100011 # funct3: 110
+    BGEU    = 0b1100011 # funct3: 111
 
     # Load Operations   (0b0000011) | I-Type
     LOAD    = 0b0000011 # Grouping
@@ -85,6 +85,21 @@ class OpCodes(IntEnum):
     SYSTEM  = 0b1110011 # Grouping
     ECALL   = 0b1110011
     EBREAK  = 0b1110011
+
+class Branch(IntEnum):
+    BEQ     = 0b000
+    BNE     = 0b001
+    BLT     = 0b100
+    BGE     = 0b101
+    BLTU    = 0b110
+    BGEU    = 0b111
+
+class Load(IntEnum):
+    LB      = 0b000
+    LH      = 0b001
+    LW      = 0b010
+    LBU     = 0b100
+    LHU     = 0b101
 
 class AluOp(IntEnum):
     ADD     = 0b000
