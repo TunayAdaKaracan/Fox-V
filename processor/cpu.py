@@ -96,7 +96,7 @@ class CPU(wiring.Component):
         with m.If((decoder.branch & takeBranch) | decoder.jal):
             m.d.comb += nextPC.eq(PC + decoder.immediate)
         with m.Elif(decoder.jalr):
-            m.d.comb += nextPC.eq(rs1 + decoder.immediate)
+            m.d.comb += nextPC.eq((rs1 + decoder.immediate) & ~Const(1, shape=32))
         with m.Else():
             m.d.comb += nextPC.eq(PC + 4)
 
@@ -104,7 +104,7 @@ class CPU(wiring.Component):
         store_data  = Signal(32)
 
         # TODO: Fix wishbone bus transactions
-        with m.FSM(reset=ExecutionStage.FETCH_INSTRUCTION) as fsm:
+        with m.FSM(init=ExecutionStage.FETCH_INSTRUCTION) as fsm:
             # Set addresses to fetch the instruction
             with m.State(ExecutionStage.FETCH_INSTRUCTION):
                 m.d.comb += [
@@ -114,11 +114,10 @@ class CPU(wiring.Component):
                     self.bus.cyc    .eq(1),
                     self.bus.stb    .eq(1),
                 ]
+
                 with m.If(self.bus.ack):
                     m.d.sync += instruction.eq(self.bus.data_r)
                     m.next = ExecutionStage.FETCH_REGISTERS
-                with m.Else():
-                    m.next = ExecutionStage.FETCH_INSTRUCTION
             
             # Fetch rs1, rs2
             with m.State(ExecutionStage.FETCH_REGISTERS):
@@ -153,8 +152,6 @@ class CPU(wiring.Component):
                         #TODO: Load
                     )
                     m.next = ExecutionStage.FETCH_REGISTERS
-                with m.Else():
-                    m.next = ExecutionStage.LOAD
             
             with m.State(ExecutionStage.STORE):
                 # TODO: ...
@@ -163,20 +160,21 @@ class CPU(wiring.Component):
         writeback_en    = Signal(1)
         writeback_data  = Signal(32)
 
-        m.d.comb += writeback_en.eq(
-            (
-                (fsm.ongoing == ExecutionStage.EXECUTE) | 
-                (fsm.ongoing == ExecutionStage.LOAD)
-            ) & (
-                decoder.alu_op | 
-                decoder.jal | 
-                decoder.jalr |
-                decoder.lui |
-                decoder.auipc |
-                decoder.load
+        # Writeback Enable
+        with m.If(fsm.ongoing(ExecutionStage.EXECUTE)):
+            m.d.comb += writeback_en.eq(
+                decoder.alu_op  |
+                decoder.jal     |
+                decoder.jalr    |
+                decoder.lui     |
+                decoder.auipc
             )
-        )
+        with m.Elif(fsm.ongoing(ExecutionStage.LOAD)):
+            m.d.comb += writeback_en.eq(decoder.load)
+        with m.Else():
+            m.d.comb += writeback_en.eq(0)
 
+        # Writeback Data
         with m.If(decoder.load):
             m.d.comb += writeback_data.eq(load_data)
         with m.Elif(decoder.jal | decoder.jalr):
@@ -189,7 +187,7 @@ class CPU(wiring.Component):
             m.d.comb += writeback_data.eq(alu.result)
 
         m.d.comb += [
-            regfile.rs_re   .eq(fsm.ongoing == ExecutionStage.FETCH_REGISTERS),
+            regfile.rs_re   .eq(fsm.ongoing(ExecutionStage.FETCH_REGISTERS)),
             regfile.rd_we   .eq(writeback_en),
             regfile.rd_data .eq(writeback_data)
         ]
